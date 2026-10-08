@@ -206,13 +206,15 @@ def _kl_bernoulli_bernoulli(p, q):
         torch.nn.functional.softplus(-q.logits)
         - torch.nn.functional.softplus(-p.logits)
     )
-    t1[q.probs == 0] = inf
-    t1[p.probs == 0] = 0
+    # torch.where rather than masked assignment: the masks have the shape of
+    # one operand while t1/t2 have the broadcast shape of both.
+    t1 = torch.where(q.probs == 0, inf, t1)
+    t1 = torch.where(p.probs == 0, 0, t1)
     t2 = (1 - p.probs) * (
         torch.nn.functional.softplus(q.logits) - torch.nn.functional.softplus(p.logits)
     )
-    t2[q.probs == 1] = inf
-    t2[p.probs == 1] = 0
+    t2 = torch.where(q.probs == 1, inf, t2)
+    t2 = torch.where(p.probs == 1, 0, t2)
     return t1 + t2
 
 

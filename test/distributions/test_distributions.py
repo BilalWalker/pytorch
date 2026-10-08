@@ -6228,6 +6228,22 @@ class TestKL(DistributionsTestCase):
         )
         self.assertEqual(kl_divergence(Uniform(0, 1), Beta(1, 1)), 0)
 
+    def test_kl_bernoulli_broadcast(self):
+        # The probs == 0 / probs == 1 corrections must land on the broadcast
+        # result, not on elements indexed by one operand's shape. See #200016.
+        p = Bernoulli(torch.full((3, 3), 0.5))
+        q = Bernoulli(torch.tensor([0.0, 0.5, 1.0]))
+        q_expanded = Bernoulli(q.probs.expand(3, 3).contiguous())
+        self.assertEqual(kl_divergence(p, q), kl_divergence(p, q_expanded))
+        self.assertEqual(kl_divergence(q, p), kl_divergence(q_expanded, p))
+
+        p = Bernoulli(torch.rand(4, 3))
+        q = Bernoulli(torch.rand(1, 3))
+        kl = kl_divergence(p, q)
+        self.assertEqual(kl.shape, torch.Size([4, 3]))
+        q_expanded = Bernoulli(q.probs.expand(4, 3).contiguous())
+        self.assertEqual(kl, kl_divergence(p, q_expanded))
+
     def test_kl_shape(self):
         for Dist, params in _get_examples():
             for i, param in enumerate(params):
